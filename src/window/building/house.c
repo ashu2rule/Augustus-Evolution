@@ -1,6 +1,7 @@
 #include "house.h"
 
 #include "building/building.h"
+#include "building/ae_housing_audit.h"
 #include "building/properties.h"
 #include "city/constants.h"
 #include "city/finance.h"
@@ -128,6 +129,23 @@ static void draw_happiness_info(building_info_context *c, int y_offset)
     }
 }
 
+/* AE v0.5: one-line, read-only status from actual simulation house state.
+ * Scope: next housing level only. See full audit for additional requirements.
+ */
+static void ae_draw_house_upgrade_status(building_info_context *c, const building *house)
+{
+    ae_house_audit audit = ae_house_evaluate(house);
+    int y = c->y_offset + 239;
+    int x = c->x_offset + 36;
+    const char *prefix = audit.current_level >= HOUSE_MAX
+        ? "Housing: highest level"
+        : (audit.missing_count ? "Upgrade blockers: " : "Next upgrade: ready*");
+    int width = text_draw(string_from_ascii(prefix), x, y, FONT_NORMAL_BROWN, 0);
+    if (audit.current_level < HOUSE_MAX && audit.missing_count) {
+        text_draw_number(audit.missing_count, '@', " ", x + width, y, FONT_NORMAL_BROWN, 0);
+    }
+    /* Star: the engine also checks footprint/expansion and time. */
+}
 void window_building_draw_house(building_info_context *c)
 {
     c->advisor_button = ADVISOR_HOUSING;
@@ -147,6 +165,7 @@ void window_building_draw_house(building_info_context *c)
     draw_population_info(c, c->y_offset + 134);
     draw_tax_info(c, c->y_offset + 174);
     draw_happiness_info(c, c->y_offset + 194);
+    ae_draw_house_upgrade_status(c, b);
 
     int x_offset = 32;
     int y_content = 259;
